@@ -57,6 +57,8 @@ func servePage(w http.ResponseWriter, r *http.Request) {
 func startServer() {
 	http.HandleFunc("/videos", listVideos)
 	http.HandleFunc("/delete", deleteVideo)
+	http.HandleFunc("/watched", getWatchedVideos)
+	http.HandleFunc("/mark-watched", markAsWatched)
 	http.HandleFunc("/", servePage)
 	http.Handle("/videos/", http.StripPrefix("/videos/", http.FileServer(http.Dir(videoDir))))
 
