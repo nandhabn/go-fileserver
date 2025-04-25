@@ -1,67 +1,31 @@
 package main
 
 import (
-	"encoding/json"
+	"fileserver/controllers"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 )
 
-type Video struct {
-	Name string
-	Path string
-}
-
-type PageData struct {
-	Videos []Video
-}
-
-func listVideos(w http.ResponseWriter, r *http.Request) {
-	files, err := os.ReadDir(videoDir)
-	if err != nil {
-		http.Error(w, "Failed to list videos", http.StatusInternalServerError)
-		return
-	}
-
-	var videos []Video
-	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".mp4" || filepath.Ext(file.Name()) == ".webm" || filepath.Ext(file.Name()) == ".ogg" || filepath.Ext(file.Name()) == ".mkv" {
-			videos = append(videos, Video{Name: file.Name(), Path: "/videos/" + file.Name()})
-		}
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(videos)
-}
-
-func servePage(w http.ResponseWriter, r *http.Request) {
-	files, err := os.ReadDir(videoDir)
-	if err != nil {
-		http.Error(w, "Failed to list videos", http.StatusInternalServerError)
-		return
-	}
-
-	var videos []Video
-	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".mp4" || filepath.Ext(file.Name()) == ".webm" || filepath.Ext(file.Name()) == ".ogg" || filepath.Ext(file.Name()) == ".mkv" {
-			videos = append(videos, Video{Name: file.Name(), Path: "/videos/" + file.Name()})
-		}
-	}
-	tmpl := template.Must(template.New("page").Parse(pageTemplate))
-	tmpl.Execute(w, PageData{Videos: videos})
-}
-
 func startServer() {
-	http.HandleFunc("/videos", listVideos)
-	http.HandleFunc("/delete", deleteVideo)
-	http.HandleFunc("/watched", getWatchedVideos)
-	http.HandleFunc("/mark-watched", markAsWatched)
-	http.HandleFunc("/", servePage)
-	http.Handle("/videos/", http.StripPrefix("/videos/", http.FileServer(http.Dir(videoDir))))
+	// Frontend Mux for serving React build and static files
+	frontendMux := http.NewServeMux()
+	frontendMux.Handle("/videos/", http.StripPrefix("/videos/", http.FileServer(http.Dir(videoDir))))
+	frontendMux.HandleFunc("/", controllers.ServeIndex(uiDir)) // Serve index.html for root path
+
+	// API Mux for handling API routes
+	apiMux := http.NewServeMux()
+	apiMux.HandleFunc("/api/ws", controllers.HandleWebSocket(watchFile))
+	apiMux.HandleFunc("/api/videos/download-next-10", controllers.DownloadNext10Handler(downloadQueue))
+	apiMux.HandleFunc("/api/videos", controllers.ListVideos(videoDir, downloading))
+	apiMux.HandleFunc("/api/videos/{id}", controllers.DeleteVideo(videoDir))
+	apiMux.HandleFunc("/api/videos/download", controllers.DownloadVideoHandler(downloadQueue))
+
+	// Root Mux to combine frontend and API
+	rootMux := http.NewServeMux()
+	rootMux.Handle("/api/", apiMux)  // Route API requests to apiMux
+	rootMux.Handle("/", frontendMux) // Route all other requests to frontendMux
 
 	fmt.Printf("Serving on http://localhost:%s\n", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(http.ListenAndServe(":"+port, rootMux))
 }

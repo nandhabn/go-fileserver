@@ -1,4 +1,4 @@
-package main
+package controllers
 
 import (
 	"encoding/json"
@@ -47,7 +47,7 @@ func saveWatchedVideos() {
 	}
 }
 
-func markAsWatched(w http.ResponseWriter, r *http.Request) {
+func MarkAsWatched(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 		return
@@ -67,7 +67,7 @@ func markAsWatched(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func getWatchedVideos(w http.ResponseWriter, r *http.Request) {
+func GetWatchedVideos(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	mu.Lock()
 	defer mu.Unlock()

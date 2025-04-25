@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fileserver/cmd"
 	"fmt"
 	"os"
 
@@ -17,10 +18,12 @@ var rootCmd = &cobra.Command{
 
 var videoDir string
 var port string
+var watchFile string
+var uiDir string
 
 func init() {
-	rootCmd.Flags().StringVarP(&videoDir, "directory", "d", "./videos", "Directory to serve videos from")
-	rootCmd.Flags().StringVarP(&port, "port", "p", "8080", "Port to run the server on")
+	cmd.AddGetUrlsCmd(rootCmd)
+	cmd.AddServeCmd(startServer, rootCmd, &videoDir, &uiDir, &watchFile, &port)
 }
 
 func main() {
